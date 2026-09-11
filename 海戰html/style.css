@@ -1,0 +1,998 @@
+/* ==========================================================================
+   NAVAL COMBAT - RADAR TECH MILITARY CSS STYLES
+   ========================================================================== */
+
+:root {
+    --bg-deep: #050b14;
+    --bg-panel: rgba(10, 25, 47, 0.85);
+    --bg-card: rgba(15, 34, 64, 0.7);
+    --border-glow: #00f3ff;
+    --border-dim: #1e3a5f;
+    --cyan: #00f3ff;
+    --cyan-glow: rgba(0, 243, 255, 0.35);
+    --green: #00ff88;
+    --green-glow: rgba(0, 255, 136, 0.35);
+    --red: #ff3366;
+    --red-glow: rgba(255, 51, 102, 0.4);
+    --orange: #ff9d00;
+    --yellow: #ffd600;
+    --text-main: #e2f1ff;
+    --text-dim: #7f9eb8;
+    --font-tactical: 'Consolas', 'Courier New', 'Segoe UI', monospace, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+body {
+    background-color: var(--bg-deep);
+    background-image: 
+        radial-gradient(circle at 50% 20%, rgba(0, 100, 180, 0.15) 0%, transparent 60%),
+        linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+    background-size: 100% 100%, 30px 30px, 30px 30px;
+    color: var(--text-main);
+    font-family: var(--font-tactical);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* 頂部裝飾掃描線效果 */
+body::after {
+    content: " ";
+    position: fixed;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+    background-size: 100% 4px;
+    z-index: 999;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+/* ================= TOP NAV BAR ================= */
+header {
+    width: 100%;
+    max-width: 1300px;
+    padding: 14px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-dim);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.radar-logo {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--cyan);
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 10px var(--cyan-glow);
+}
+
+.radar-logo::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 4px; height: 4px;
+    background: var(--cyan);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.radar-logo::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    border-top: 2px solid #fff;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.brand h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--cyan);
+    text-shadow: 0 0 12px var(--cyan-glow);
+}
+
+.brand .badge {
+    font-size: 0.7rem;
+    background: rgba(0, 243, 255, 0.15);
+    color: var(--cyan);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--cyan);
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 按鈕樣式 */
+.btn-icon, .btn-action, .btn-primary, .btn-danger, .btn-secondary {
+    font-family: var(--font-tactical);
+    cursor: pointer;
+    border: none;
+    outline: none;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: bold;
+}
+
+.btn-icon {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    color: var(--text-main);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.btn-icon:hover {
+    border-color: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan-glow);
+    color: var(--cyan);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #00b4d8, #0077b6);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(0, 180, 216, 0.4);
+    border: 1px solid #90e0ef;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #00c7ee, #0096c7);
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.6);
+    transform: translateY(-2px);
+}
+
+.btn-action {
+    background: rgba(0, 243, 255, 0.12);
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+.btn-action:hover {
+    background: var(--cyan);
+    color: #050b14;
+    box-shadow: 0 0 16px var(--cyan-glow);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-main);
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #fff;
+}
+
+/* ================= MAIN CONTAINER ================= */
+main {
+    width: 100%;
+    max-width: 1300px;
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 10;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.view-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.view-section.hidden {
+    display: none !important;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================= LOBBY SCREEN (KAHOOT STYLE) ================= */
+.lobby-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-glow);
+    border-radius: 16px;
+    padding: 36px 40px;
+    max-width: 600px;
+    width: 100%;
+    margin-top: 30px;
+    box-shadow: 0 0 30px rgba(0, 243, 255, 0.15), inset 0 0 20px rgba(0, 243, 255, 0.05);
+    text-align: center;
+    position: relative;
+}
+
+.lobby-title {
+    font-size: 1.8rem;
+    color: #fff;
+    margin-bottom: 8px;
+    text-shadow: 0 0 10px var(--cyan-glow);
+    letter-spacing: 2px;
+}
+
+.lobby-subtitle {
+    color: var(--text-dim);
+    margin-bottom: 28px;
+    font-size: 0.95rem;
+}
+
+.lobby-tabs {
+    display: flex;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-dim);
+}
+
+.lobby-tab {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: var(--text-dim);
+    transition: all 0.2s;
+}
+
+.lobby-tab.active {
+    background: var(--cyan);
+    color: #050b14;
+    font-weight: bold;
+    box-shadow: 0 0 12px var(--cyan-glow);
+}
+
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+}
+
+/* 建立房間 (Host Room) - Kahoot 大 PIN 碼 */
+.pin-display-box {
+    background: rgba(0, 15, 30, 0.85);
+    border: 2px dashed var(--cyan);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+    position: relative;
+}
+
+.pin-label {
+    font-size: 0.85rem;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.pin-number {
+    font-size: 3.5rem;
+    font-weight: 900;
+    letter-spacing: 12px;
+    color: #ffffff;
+    text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan-glow);
+    animation: pinPulse 2s infinite ease-in-out;
+}
+
+@keyframes pinPulse {
+    0%, 100% { transform: scale(1); text-shadow: 0 0 20px var(--cyan); }
+    50% { transform: scale(1.03); text-shadow: 0 0 30px var(--cyan), 0 0 50px rgba(0,243,255,0.8); }
+}
+
+.pin-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.waiting-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--orange);
+    font-size: 0.95rem;
+    margin-top: 18px;
+}
+
+.dot-flashing {
+    position: relative;
+    width: 8px;
+    height: 8px;
+    border-radius: 5px;
+    background-color: var(--orange);
+    color: var(--orange);
+    animation: dotFlashing 1s infinite linear alternate;
+    animation-delay: 0.5s;
+}
+
+@keyframes dotFlashing {
+    0% { background-color: var(--orange); }
+    50%, 100% { background-color: rgba(255, 157, 0, 0.2); }
+}
+
+/* 加入房間 (Join Room) - Kahoot 風格大輸入框 */
+.join-input-group {
+    margin: 24px 0;
+}
+
+.pin-input {
+    width: 100%;
+    max-width: 380px;
+    background: rgba(0, 10, 20, 0.85);
+    border: 2px solid var(--border-dim);
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 2.2rem;
+    letter-spacing: 10px;
+    text-align: center;
+    color: #fff;
+    font-family: var(--font-tactical);
+    outline: none;
+    transition: all 0.2s;
+}
+
+.pin-input:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 20px var(--cyan-glow);
+}
+
+.pin-input::placeholder {
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.solo-mode-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 25px 0 15px;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+}
+
+.solo-mode-divider::before, .solo-mode-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px dashed var(--border-dim);
+}
+
+.solo-mode-divider::before { margin-right: 15px; }
+.solo-mode-divider::after { margin-left: 15px; }
+
+/* ================= DEPLOYMENT STAGE (艦隊佈陣) ================= */
+.deployment-container {
+    width: 100%;
+    max-width: 1100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stage-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.stage-title {
+    font-size: 1.6rem;
+    color: var(--cyan);
+    text-shadow: 0 0 10px var(--cyan-glow);
+    margin-bottom: 6px;
+}
+
+.stage-hint {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+}
+
+.deployment-board-wrap {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.ship-inventory {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-dim);
+    border-radius: 12px;
+    padding: 20px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.inventory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-dim);
+    padding-bottom: 10px;
+}
+
+.inventory-title {
+    font-size: 1rem;
+    color: #fff;
+}
+
+.rotate-tip {
+    font-size: 0.8rem;
+    color: var(--cyan);
+}
+
+.ship-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ship-item:hover {
+    border-color: var(--cyan);
+    background: rgba(0, 243, 255, 0.08);
+}
+
+.ship-item.selected {
+    border-color: var(--cyan);
+    background: rgba(0, 243, 255, 0.18);
+    box-shadow: 0 0 10px var(--cyan-glow);
+}
+
+.ship-item.placed {
+    opacity: 0.5;
+    border-color: var(--green);
+}
+
+.ship-item-name {
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+.ship-blocks {
+    display: flex;
+    gap: 3px;
+}
+
+.ship-block-mini {
+    width: 12px;
+    height: 12px;
+    background: var(--cyan);
+    border-radius: 2px;
+    box-shadow: 0 0 4px var(--cyan-glow);
+}
+
+.deployment-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* ================= BOARD GRID STYLES ================= */
+.board-container {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-dim);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+    position: relative;
+}
+
+.board-label {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--cyan);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 1px;
+}
+
+.board-grid-wrapper {
+    position: relative;
+    padding: 24px 0 0 24px;
+}
+
+/* 網格座標標籤 */
+.grid-col-labels {
+    position: absolute;
+    top: 0;
+    left: 24px;
+    right: 0;
+    height: 24px;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    line-height: 24px;
+}
+
+.grid-row-labels {
+    position: absolute;
+    top: 24px;
+    left: 0;
+    bottom: 0;
+    width: 24px;
+    display: grid;
+    grid-template-rows: repeat(10, 1fr);
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    align-items: center;
+}
+
+.board-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 36px);
+    grid-template-rows: repeat(10, 36px);
+    gap: 2px;
+    background: rgba(0, 30, 60, 0.5);
+    border: 2px solid var(--border-dim);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.grid-cell {
+    background: rgba(10, 30, 55, 0.7);
+    border: 1px solid rgba(0, 243, 255, 0.1);
+    transition: all 0.15s ease;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.grid-cell:hover {
+    background: rgba(0, 243, 255, 0.2);
+}
+
+/* 放置預覽高亮 */
+.grid-cell.preview-valid {
+    background: rgba(0, 255, 136, 0.45) !important;
+    border-color: var(--green) !important;
+}
+
+.grid-cell.preview-invalid {
+    background: rgba(255, 51, 102, 0.45) !important;
+    border-color: var(--red) !important;
+}
+
+/* 艦艇單元格 */
+.grid-cell.has-ship {
+    background: linear-gradient(135deg, #1b4965, #0b2545);
+    border: 1px solid #5fa8d3;
+    box-shadow: inset 0 0 6px rgba(0, 243, 255, 0.3);
+}
+
+.grid-cell.has-ship::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: #62b6cb;
+    border-radius: 2px;
+}
+
+/* 開火結果狀態 */
+.grid-cell.miss {
+    background: rgba(20, 40, 65, 0.9);
+    cursor: not-allowed;
+}
+
+.grid-cell.miss::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #ffffff;
+    animation: splashPop 0.3s ease-out;
+}
+
+@keyframes splashPop {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.grid-cell.hit {
+    background: rgba(180, 20, 40, 0.75) !important;
+    border-color: var(--red) !important;
+    box-shadow: 0 0 10px var(--red-glow);
+    cursor: not-allowed;
+}
+
+.grid-cell.hit::after {
+    content: '💥';
+    font-size: 18px;
+    animation: explodeAnim 0.4s ease-out;
+}
+
+@keyframes explodeAnim {
+    0% { transform: scale(0.3); filter: brightness(2); }
+    50% { transform: scale(1.4); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+.grid-cell.sunk {
+    background: rgba(100, 10, 20, 0.9) !important;
+    border-color: #ff0044 !important;
+    opacity: 0.9;
+}
+
+/* 敵方海域雷達掃描線特效 */
+.radar-grid-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 24px; left: 24px; right: 0; bottom: 0;
+    background: conic-gradient(from 0deg, transparent 0deg, rgba(0, 243, 255, 0.15) 60deg, transparent 65deg);
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 5;
+    animation: radarScan 4s linear infinite;
+}
+
+@keyframes radarScan {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ================= COMBAT ARENA (對戰介面) ================= */
+.battle-container {
+    width: 100%;
+    max-width: 1250px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* 回合提示橫幅 */
+.turn-banner {
+    width: 100%;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-dim);
+    border-radius: 10px;
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+}
+
+.turn-status {
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.turn-status.your-turn {
+    color: var(--cyan);
+    text-shadow: 0 0 12px var(--cyan-glow);
+    animation: turnBlink 1.5s infinite;
+}
+
+.turn-status.opponent-turn {
+    color: var(--orange);
+    text-shadow: 0 0 10px rgba(255, 157, 0, 0.3);
+}
+
+@keyframes turnBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.battle-arena-layout {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+@media (max-width: 1080px) {
+    .battle-arena-layout {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+}
+
+/* 敵艦存活狀態指示器 */
+.fleet-status-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.enemy-ship-chip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 15, 30, 0.6);
+    border: 1px solid var(--border-dim);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+}
+
+.enemy-ship-chip.sunk {
+    border-color: var(--red);
+    background: rgba(255, 51, 102, 0.15);
+    color: var(--red);
+    text-decoration: line-through;
+}
+
+/* ================= TACTICAL CHAT & LOG ================= */
+.intel-panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-dim);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    height: 480px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+    min-width: 280px;
+    overflow: hidden;
+}
+
+.intel-header {
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid var(--border-dim);
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    color: var(--cyan);
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+}
+
+.combat-log-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.combat-log-list::-webkit-scrollbar {
+    width: 5px;
+}
+.combat-log-list::-webkit-scrollbar-thumb {
+    background: var(--border-dim);
+    border-radius: 4px;
+}
+
+.log-entry {
+    line-height: 1.4;
+    word-break: break-word;
+}
+.log-entry.hit { color: var(--red); }
+.log-entry.miss { color: var(--text-dim); }
+.log-entry.sunk { color: var(--yellow); font-weight: bold; }
+.log-entry.chat { color: #80e5ff; }
+.log-entry.system { color: var(--cyan); font-style: italic; }
+
+.quick-taunts-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid var(--border-dim);
+}
+
+.taunt-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--font-tactical);
+    transition: all 0.2s;
+}
+
+.taunt-btn:hover {
+    color: var(--cyan);
+    border-color: var(--cyan);
+}
+
+.chat-input-bar {
+    display: flex;
+    border-top: 1px solid var(--border-dim);
+    padding: 8px;
+    gap: 6px;
+}
+
+.chat-input-bar input {
+    flex: 1;
+    background: rgba(0, 10, 20, 0.8);
+    border: 1px solid var(--border-dim);
+    border-radius: 4px;
+    padding: 8px;
+    color: #fff;
+    font-family: var(--font-tactical);
+    outline: none;
+    font-size: 0.85rem;
+}
+
+.chat-input-bar input:focus {
+    border-color: var(--cyan);
+}
+
+/* ================= MODAL DIALOGS ================= */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(3, 7, 15, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s;
+}
+
+.modal-overlay.hidden {
+    display: none !important;
+}
+
+.modal-card {
+    background: var(--bg-panel);
+    border: 2px solid var(--border-glow);
+    border-radius: 16px;
+    padding: 32px 40px;
+    max-width: 480px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 0 50px rgba(0, 243, 255, 0.25);
+    position: relative;
+}
+
+.modal-icon {
+    font-size: 3.5rem;
+    margin-bottom: 12px;
+}
+
+.modal-title {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+}
+
+.modal-title.victory {
+    color: var(--green);
+    text-shadow: 0 0 20px var(--green-glow);
+}
+
+.modal-title.defeat {
+    color: var(--red);
+    text-shadow: 0 0 20px var(--red-glow);
+}
+
+.modal-stats {
+    background: rgba(0, 15, 30, 0.6);
+    border: 1px solid var(--border-dim);
+    border-radius: 8px;
+    padding: 14px;
+    margin: 20px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    text-align: left;
+    font-size: 0.9rem;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+/* 提示訊息浮層 (Toast) */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 2000;
+}
+
+.toast {
+    background: rgba(10, 25, 47, 0.95);
+    border: 1px solid var(--cyan);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), 0 0 10px var(--cyan-glow);
+    font-size: 0.9rem;
+    animation: toastIn 0.3s ease-out;
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}

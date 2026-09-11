@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAVAL COMBAT // 現代海戰 - 跨電腦遠端對決</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- PeerJS WebRTC P2P 連線函式庫 (CDN) -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+    <!-- 頂部導航列 -->
+    <header>
+        <div class="brand">
+            <div class="radar-logo"></div>
+            <h1>NAVAL COMBAT</h1>
+            <span class="badge">TACTICAL RADAR v1.0</span>
+        </div>
+        <div class="header-controls">
+            <button id="btnTutorial" class="btn-icon">📖 遊戲教學</button>
+            <button id="btnSoundToggle" class="btn-icon">🔊 音效</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- ================= 視圖 1: 連線大廳 (KAHOOT 風格 PIN 碼) ================= -->
+        <section id="viewLobby" class="view-section">
+            <div class="lobby-card">
+                <h2 class="lobby-title">戰術指揮所</h2>
+                <p class="lobby-subtitle">產生專屬 6 位數 PIN 碼，即可讓兩台電腦跨網路即時對抗！</p>
+
+                <div class="lobby-tabs">
+                    <div id="tabHost" class="lobby-tab active">建立對戰 (HOST)</div>
+                    <div id="tabJoin" class="lobby-tab">輸入 PIN (JOIN)</div>
+                    <div id="tabSolo" class="lobby-tab">單機對決 (SOLO)</div>
+                </div>
+
+                <!-- 開房選項 (產生 PIN) -->
+                <div id="hostContent" class="tab-content active">
+                    <button id="btnCreateRoom" class="btn-primary" style="width: 100%;">
+                        ⚡ 生成對戰房間 (GENERATE PIN)
+                    </button>
+
+                    <div id="hostWaitingBox" class="pin-display-box hidden">
+                        <div class="pin-label">GAME PIN 房間號碼</div>
+                        <div id="displayPin" class="pin-number">------</div>
+                        <p style="color: var(--text-dim); font-size: 0.85rem; margin-top: 6px;">
+                            請讓另一台電腦輸入上方 6 位數字即可連線對抗
+                        </p>
+                        <div class="pin-actions">
+                            <button id="btnCopyPin" class="btn-action">📋 複製 PIN 碼</button>
+                            <button id="btnCopyLink" class="btn-action">🔗 複製邀請網址</button>
+                        </div>
+                        <div class="waiting-indicator">
+                            <div class="dot-flashing"></div>
+                            <span>正在等待對手進入指揮所...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 加入選項 (輸入 PIN) -->
+                <div id="joinContent" class="tab-content">
+                    <div class="join-input-group">
+                        <input id="inputPin" class="pin-input" type="text" maxlength="6" placeholder="輸入 6 位 PIN" autocomplete="off">
+                    </div>
+                    <button id="btnJoinRoom" class="btn-primary" style="width: 100%;">
+                        🚀 加入對戰 (JOIN BATTLE)
+                    </button>
+                </div>
+
+                <!-- 單機選項 (打 AI) -->
+                <div id="soloContent" class="tab-content">
+                    <p style="color: var(--text-dim); margin-bottom: 20px; line-height: 1.6;">
+                        暫時沒有對手？立即與內建的「智械演算法 AI」進行模擬海戰演練！<br>
+                        AI 採用智慧獵殺 (Hunt & Target) 戰術，極具挑戰性。
+                    </p>
+                    <button id="btnStartSolo" class="btn-primary" style="width: 100%;">
+                        🎯 啟動單機練靶模式
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 視圖 2: 艦隊佈陣 (DEPLOYMENT) ================= -->
+        <section id="viewDeployment" class="view-section hidden">
+            <div class="deployment-container">
+                <div class="stage-header">
+                    <h2 class="stage-title">艦隊戰術佈陣</h2>
+                    <p class="stage-hint">點擊選擇艦艇後放置於海域，或按「空白鍵 / 旋轉按鈕」切換方向。也可一鍵隨機部署！</p>
+                </div>
+
+                <div class="deployment-board-wrap">
+                    <!-- 艦艇庫 -->
+                    <div class="ship-inventory">
+                        <div class="inventory-header">
+                            <span class="inventory-title">待配置艦艇 (5 艘)</span>
+                            <span class="rotate-tip">方向: <strong id="rotateIndicator">水平</strong></span>
+                        </div>
+                        <div id="shipInventoryList"></div>
+                        <div class="deployment-controls">
+                            <button id="btnRotateShip" class="btn-action">🔄 旋轉 [Space]</button>
+                            <button id="btnRandomFleet" class="btn-action">🎲 隨機佈陣</button>
+                            <button id="btnResetFleet" class="btn-secondary">🗑️ 清空重置</button>
+                        </div>
+                        <button id="btnConfirmReady" class="btn-primary" style="margin-top: 10px;" disabled>
+                            準備完成 (0/5)
+                        </button>
+                    </div>
+
+                    <!-- 佈陣棋盤 -->
+                    <div class="board-container">
+                        <div class="board-label">🚢 我方海域部署區</div>
+                        <div class="board-grid-wrapper">
+                            <div class="grid-col-labels">
+                                <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div>
+                                <div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+                            </div>
+                            <div class="grid-row-labels">
+                                <div>A</div><div>B</div><div>C</div><div>D</div><div>E</div>
+                                <div>F</div><div>G</div><div>H</div><div>I</div><div>J</div>
+                            </div>
+                            <div id="deploymentGrid" class="board-grid"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 視圖 3: 雙海域對決 (BATTLE ARENA) ================= -->
+        <section id="viewBattle" class="view-section hidden">
+            <div class="battle-container">
+                <!-- 回合提示橫幅 -->
+                <div id="turnBanner" class="turn-banner">
+                    <div id="turnText" class="turn-status">雷達掃描中...</div>
+                    <div style="font-size: 0.85rem; color: var(--text-dim);">
+                        🔥 擊沉所有 5 艘敵艦即可獲勝
+                    </div>
+                </div>
+
+                <div class="battle-arena-layout">
+                    <!-- 我方海域 -->
+                    <div class="board-container">
+                        <div class="board-label">🛡️ 我方防守海域 (FRIENDLY)</div>
+                        <div class="board-grid-wrapper">
+                            <div class="grid-col-labels">
+                                <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div>
+                                <div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+                            </div>
+                            <div class="grid-row-labels">
+                                <div>A</div><div>B</div><div>C</div><div>D</div><div>E</div>
+                                <div>F</div><div>G</div><div>H</div><div>I</div><div>J</div>
+                            </div>
+                            <div id="battleFriendlyGrid" class="board-grid"></div>
+                        </div>
+                    </div>
+
+                    <!-- 敵方目標雷達海域 -->
+                    <div class="board-container">
+                        <div class="board-label">🎯 敵方交戰海域 (RADAR TARGET)</div>
+                        <div class="board-grid-wrapper radar-grid-wrapper">
+                            <div class="grid-col-labels">
+                                <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div>
+                                <div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+                            </div>
+                            <div class="grid-row-labels">
+                                <div>A</div><div>B</div><div>C</div><div>D</div><div>E</div>
+                                <div>F</div><div>G</div><div>H</div><div>I</div><div>J</div>
+                            </div>
+                            <div id="battleEnemyGrid" class="board-grid"></div>
+                        </div>
+                    </div>
+
+                    <!-- 戰術情資與通訊面板 -->
+                    <div class="intel-panel">
+                        <div class="intel-header">
+                            <span>📡 戰情雷達日誌</span>
+                            <span>LIVE</span>
+                        </div>
+
+                        <!-- 敵艦損毀追蹤 -->
+                        <div style="padding: 10px; background: rgba(0, 10, 20, 0.4); border-bottom: 1px solid var(--border-dim);">
+                            <div style="font-size: 0.75rem; color: var(--cyan); margin-bottom: 6px;">敵方艦隊戰損監控:</div>
+                            <div id="enemyFleetStatus" class="fleet-status-bar"></div>
+                        </div>
+
+                        <!-- 戰鬥日誌清單 -->
+                        <div id="combatLogList" class="combat-log-list"></div>
+
+                        <!-- 戰術罐頭嘲諷按鈕 -->
+                        <div class="quick-taunts-bar">
+                            <button class="taunt-btn">🎯 鎖定你了！</button>
+                            <button class="taunt-btn">💦 好險沒中！</button>
+                            <button class="taunt-btn">🔥 全砲門開火！</button>
+                            <button class="taunt-btn">⚡ 可惡，你等著！</button>
+                            <button class="taunt-btn">🤝 GG WP!</button>
+                        </div>
+
+                        <!-- 聊天輸入框 -->
+                        <div class="chat-input-bar">
+                            <input id="chatInput" type="text" placeholder="發送即時戰況指令..." maxlength="50">
+                            <button id="btnSendChat" class="btn-action">發送</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 戰術手冊與遊戲教學彈窗 -->
+    <div id="tutorialModal" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width: 660px; width: 92%; text-align: left; padding: 26px 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-dim); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="color: var(--cyan); font-size: 1.25rem; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
+                    📖 戰術手冊 // 現代海戰完全指南
+                </h3>
+                <button id="btnCloseTutorial" class="btn-icon" style="padding: 4px 10px; font-size: 1.1rem;">✕</button>
+            </div>
+            
+            <div style="max-height: 440px; overflow-y: auto; padding-right: 10px; font-size: 0.88rem; line-height: 1.6; color: var(--text-main);">
+                <div style="margin-bottom: 16px;">
+                    <h4 style="color: var(--cyan); margin-bottom: 4px;">🎯 1. 遊戲勝負目標</h4>
+                    <p style="color: var(--text-dim);">雙方各擁有 10×10 的隱蔽海域，彼此艦隊藏於海霧之中。率先將敵方 <strong>5 艘主力軍艦（共 17 個船格）</strong> 全數擊沉者獲得大捷！</p>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <h4 style="color: var(--cyan); margin-bottom: 4px;">🔗 2. 雙電腦 Kahoot PIN 碼連線</h4>
+                    <ul style="padding-left: 20px; color: var(--text-dim);">
+                        <li><strong>房主 (電腦 A)</strong>：點擊「生成對戰房間」，畫面會顯示 6 位大字體號碼（例如 <code>582 914</code>）。</li>
+                        <li><strong>加入者 (電腦 B)</strong>：切換至「輸入 PIN」分頁，鍵入該 6 位號碼後點擊「加入對戰」。</li>
+                        <li><strong>邀請網址</strong>：房主可點「複製邀請網址」直接傳給朋友，點開會自動填好 PIN 碼！</li>
+                    </ul>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <h4 style="color: var(--cyan); margin-bottom: 4px;">🚢 3. 艦隊編制 (5 艘軍艦)</h4>
+                    <div style="background: rgba(0,15,30,0.6); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-dim);">
+                        <div>• <strong>航空母艦 (Carrier)</strong>：5 格 ── 艦隊旗艦，目標最龐大</div>
+                        <div>• <strong>戰列艦 (Battleship)</strong>：4 格 ── 主力砲擊艦艇</div>
+                        <div>• <strong>巡洋艦 (Cruiser)</strong>：3 格 ── 中型機動戰艦</div>
+                        <div>• <strong>潛水艇 (Submarine)</strong>：3 格 ── 水下幽靈隱匿艦</div>
+                        <div>• <strong>驅逐艦 (Destroyer)</strong>：2 格 ── 最靈活嬌小，盲狙難度最高！</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <h4 style="color: var(--cyan); margin-bottom: 4px;">🛠️ 4. 艦隊佈陣操作</h4>
+                    <ul style="padding-left: 20px; color: var(--text-dim);">
+                        <li>點選船艦後，移動至棋盤會顯示 <strong>綠色（合法）/ 紅色（無效）</strong> 預覽。</li>
+                        <li>按下鍵盤 <strong>空白鍵 (Space)</strong> 或點「旋轉」按鈕可切換水平與垂直方向。</li>
+                        <li>懶得排？點擊 <strong>「🎲 隨機佈陣」</strong> 電腦自動合法秒排！</li>
+                    </ul>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <h4 style="color: var(--cyan); margin-bottom: 4px;">⚔️ 5. 對決開火與雷達判讀</h4>
+                    <ul style="padding-left: 20px; color: var(--text-dim);">
+                        <li><strong>白色浮標 (MISS)</strong>：砲彈落海濺起浪花，該格無敵艦。</li>
+                        <li><strong>紅色烈焰 (HIT)</strong>：精準命中敵艦！💥</li>
+                        <li><strong>沉沒警報 (SUNK)</strong>：整艘船所有單元格皆被擊中時即沉沒。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 style="color: var(--orange); margin-bottom: 4px;">💡 6. 指揮官必勝秘訣</h4>
+                    <p style="color: var(--text-dim);">
+                        <strong>【棋盤跳格搜尋法】</strong>：因為最小的船是 2 格，像西洋棋黑白格一樣「每隔一格開火一次」，任何船艦都絕不可能漏網，節省 50% 彈藥！<br>
+                        <strong>【十字獵殺法】</strong>：一旦擊中一格，下幾回合立刻射擊其「上下左右」相鄰四格，確認方位後順向收割！
+                    </p>
+                </div>
+            </div>
+
+            <div style="margin-top: 18px; text-align: center; border-top: 1px solid var(--border-dim); padding-top: 14px;">
+                <button id="btnGotItTutorial" class="btn-primary" style="padding: 8px 36px;">
+                    了解！返回戰役
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 遊戲結束結算彈窗 -->
+    <div id="gameOverModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div id="modalIcon" class="modal-icon">🏆</div>
+            <h2 id="modalTitle" class="modal-title victory">任務大捷</h2>
+            <div id="modalStats" class="modal-stats"></div>
+            <div class="modal-actions">
+                <button id="btnRematch" class="btn-primary">🔄 再來一局 (REMATCH)</button>
+                <button id="btnBackLobby" class="btn-secondary">🏠 返回大廳</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示訊息容器 (Toast) -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- 遊戲音效引擎與核心邏輯腳本 -->
+    <script src="audio.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nonogram 數織解謎 - 邏輯像素拼圖</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Favicon icon as SVG data URI -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233b82f6'/><rect x='20' y='20' width='25' height='25' rx='5' fill='%23ffffff'/><rect x='55' y='20' width='25' height='25' rx='5' fill='%23ffffff'/><rect x='20' y='55' width='25' height='25' rx='5' fill='%23ffffff'/><line x1='55' y1='55' x2='80' y2='80' stroke='%23ef4444' stroke-width='8' stroke-linecap='round'/><line x1='80' y1='55' x2='55' y2='80' stroke='%23ef4444' stroke-width='8' stroke-linecap='round'/></svg>">
+</head>
+<body data-theme="dark" oncontextmenu="return false;">
+    <!-- Confetti Canvas for Victory Celebration -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <div id="app-container">
+        <!-- Main Header Navigation -->
+        <header id="main-header">
+            <div class="header-left">
+                <div class="app-logo" id="btn-logo-home" title="返回首頁">
+                    <div class="logo-icon">
+                        <span class="logo-box fill"></span>
+                        <span class="logo-box cross">×</span>
+                        <span class="logo-box fill"></span>
+                        <span class="logo-box empty"></span>
+                    </div>
+                    <div class="logo-text">
+                        <h1>Nonogram</h1>
+                        <span class="subtitle">數織解謎</span>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="header-nav">
+                <button class="nav-btn active" data-screen="levels">
+                    <span class="nav-icon">🎮</span>
+                    <span class="nav-text">冒險關卡</span>
+                </button>
+                <button class="nav-btn" id="btn-open-random">
+                    <span class="nav-icon">🎲</span>
+                    <span class="nav-text">隨機關卡</span>
+                </button>
+                <button class="nav-btn" id="btn-open-print">
+                    <span class="nav-icon">🖨️</span>
+                    <span class="nav-text">題目列印</span>
+                </button>
+                <button class="nav-btn" data-screen="editor">
+                    <span class="nav-icon">✏️</span>
+                    <span class="nav-text">自製關卡</span>
+                </button>
+                <button class="nav-btn" data-screen="converter">
+                    <span class="nav-icon">🖼️</span>
+                    <span class="nav-text">圖片轉數織</span>
+                </button>
+                <button class="nav-btn" id="btn-open-tutorial">
+                    <span class="nav-icon">📖</span>
+                    <span class="nav-text">遊戲教學</span>
+                </button>
+            </nav>
+
+            <div class="header-right">
+                <div class="theme-select-wrapper">
+                    <button class="icon-btn" id="btn-theme-toggle" title="切換主題風格">
+                        <span id="theme-icon">🎨</span>
+                    </button>
+                </div>
+                <button class="icon-btn" id="btn-sound-toggle" title="音效開關">
+                    <span id="sound-icon">🔊</span>
+                </button>
+                <button class="icon-btn" id="btn-settings" title="遊戲設定">
+                    <span>⚙️</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Screen Viewport -->
+        <main id="main-content">
+            <!-- ========================================== -->
+            <!-- Screen 1: Level Selection Screen -->
+            <!-- ========================================== -->
+            <section id="screen-levels" class="screen-panel active">
+                <div class="screen-header">
+                    <div class="banner-welcome">
+                        <h2>選擇挑戰謎題</h2>
+                        <p>依照行列數字線索填入方塊，解開謎底並揭曉驚艷的彩色像素畫！</p>
+                    </div>
+
+                    <!-- Quick Mode Launcher Banners -->
+                    <div class="quick-action-banners">
+                        <div class="action-card random-card" id="card-random-challenge">
+                            <div class="card-icon">🎲</div>
+                            <div class="card-info">
+                                <h3>無限隨機關卡</h3>
+                                <p>智慧演算即時生成，100% 邏輯推導唯一解、有跡可循！</p>
+                            </div>
+                            <button class="btn btn-primary btn-sm" id="btn-quick-random">立即開局 ▶</button>
+                        </div>
+                        <div class="action-card print-card" id="card-print-worksheet">
+                            <div class="card-icon">🖨️</div>
+                            <div class="card-info">
+                                <h3>題目列印 / 學習單</h3>
+                                <p>預設 A4 尺寸，可選 5×5 或 10×10，自動生成題目卷與答案卷！</p>
+                            </div>
+                            <button class="btn btn-secondary btn-sm" id="btn-quick-print">製作試卷 🖨️</button>
+                        </div>
+                    </div>
+
+                    <!-- Active Game Resume Banner (shown if active game exists) -->
+                    <div id="resume-banner" class="resume-banner hidden">
+                        <div class="resume-info">
+                            <span class="resume-badge">進行中</span>
+                            <span id="resume-title" class="resume-title">溫暖愛心</span>
+                            <span id="resume-time" class="resume-meta">已進行 01:25</span>
+                        </div>
+                        <div class="resume-actions">
+                            <button id="btn-resume-game" class="btn btn-primary">繼續遊玩 ▶</button>
+                            <button id="btn-discard-game" class="btn btn-ghost" title="放棄此盤進度">放棄</button>
+                        </div>
+                    </div>
+
+                    <!-- Filter Tabs -->
+                    <div class="filter-tabs">
+                        <button class="filter-btn active" data-category="all">全部關卡</button>
+                        <button class="filter-btn" data-category="5x5">5×5 新手啟程</button>
+                        <button class="filter-btn" data-category="10x10">10×10 趣味進階</button>
+                        <button class="filter-btn" data-category="15x15">15×15 邏輯考驗</button>
+                        <button class="filter-btn" data-category="20x20">20×20 專家殿堂</button>
+                        <button class="filter-btn" data-category="custom">自訂關卡</button>
+                    </div>
+                </div>
+
+                <!-- Level Cards Grid -->
+                <div id="level-cards-container" class="level-cards-grid">
+                    <!-- Populated dynamically by app.js -->
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- Screen 2: Game Board Play Screen -->
+            <!-- ========================================== -->
+            <section id="screen-game" class="screen-panel">
+                <!-- Top In-Game Status Bar -->
+                <div class="game-topbar">
+                    <div class="topbar-left">
+                        <button id="btn-back-to-levels" class="btn btn-secondary btn-icon-text">
+                            <span>←</span>
+                            <span>返回選單</span>
+                        </button>
+                        <div class="game-title-group">
+                            <h3 id="current-puzzle-title">溫暖愛心</h3>
+                            <span id="current-puzzle-badge" class="badge">5x5 新手</span>
+                        </div>
+                    </div>
+
+                    <div class="topbar-center">
+                        <div class="stat-pill" title="通關時間">
+                            <span class="stat-icon">⏱️</span>
+                            <span id="game-timer" class="stat-value">00:00</span>
+                        </div>
+                        <div class="stat-pill" id="mistakes-container" title="失誤次數">
+                            <span class="stat-icon" id="mistake-icon">❤️</span>
+                            <span id="game-mistakes" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-pill" title="填色進度">
+                            <span class="stat-icon">🎯</span>
+                            <span id="game-progress" class="stat-value">0%</span>
+                        </div>
+                    </div>
+
+                    <div class="topbar-right">
+                        <button id="btn-undo" class="btn btn-icon" title="復原 (Ctrl+Z)" disabled>
+                            <span>↩️</span>
+                        </button>
+                        <button id="btn-redo" class="btn btn-icon" title="重做 (Ctrl+Y)" disabled>
+                            <span>↪️</span>
+                        </button>
+                        <button id="btn-hint" class="btn btn-warning btn-icon-text" title="獲取邏輯提示 (H)">
+                            <span>💡</span>
+                            <span>邏輯提示</span>
+                        </button>
+                        <button id="btn-restart" class="btn btn-ghost btn-icon" title="重新開始此關">
+                            <span>🔄</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hint Explanation Toast Message -->
+                <div id="hint-toast" class="hint-toast hidden">
+                    <div class="hint-content">
+                        <span class="hint-icon">💡</span>
+                        <span id="hint-text">線索提示內容</span>
+                    </div>
+                    <button id="btn-close-hint" class="toast-close">×</button>
+                </div>
+
+                <!-- Board Canvas / Grid Scroll Container -->
+                <div class="board-viewport" id="board-viewport">
+                    <div class="board-wrapper" id="board-wrapper">
+                        <!-- Upper left corner spacer -->
+                        <div class="clue-corner" id="clue-corner"></div>
+
+                        <!-- Top Column Clues -->
+                        <div class="col-clues-container" id="col-clues"></div>
+
+                        <!-- Left Row Clues -->
+                        <div class="row-clues-container" id="row-clues"></div>
+
+                        <!-- Interactive Board Cells Grid -->
+                        <div class="nonogram-grid" id="nonogram-grid"></div>
+                    </div>
+                </div>
+
+                <!-- Bottom Floating Controls (Desktop & Mobile Friendly) -->
+                <div class="game-bottom-toolbar">
+                    <div class="tool-mode-group">
+                        <button class="tool-btn active" data-tool="fill" id="tool-fill">
+                            <span class="tool-icon">✏️</span>
+                            <span class="tool-label">填色 (左鍵)</span>
+                            <span class="tool-hotkey">Z / 空白</span>
+                        </button>
+                        <button class="tool-btn" data-tool="cross" id="tool-cross">
+                            <span class="tool-icon">❌</span>
+                            <span class="tool-label">打叉 (右鍵)</span>
+                            <span class="tool-hotkey">X</span>
+                        </button>
+                        <button class="tool-btn" data-tool="question" id="tool-question">
+                            <span class="tool-icon">❓</span>
+                            <span class="tool-label">疑問標記</span>
+                            <span class="tool-hotkey">C</span>
+                        </button>
+                        <button class="tool-btn" data-tool="erase" id="tool-erase">
+                            <span class="tool-icon">🧹</span>
+                            <span class="tool-label">橡皮擦</span>
+                            <span class="tool-hotkey">E / 刪除</span>
+                        </button>
+                    </div>
+
+                    <div class="zoom-controls">
+                        <button class="icon-btn-small" id="btn-zoom-out" title="縮小 (Zoom Out)">-</button>
+                        <span id="zoom-level">100%</span>
+                        <button class="icon-btn-small" id="btn-zoom-in" title="放大 (Zoom In)">+</button>
+                        <button class="icon-btn-small" id="btn-zoom-reset" title="適應螢幕大小">⛶</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- Screen 3: Level Editor / Creator -->
+            <!-- ========================================== -->
+            <section id="screen-editor" class="screen-panel">
+                <div class="editor-container">
+                    <div class="editor-header">
+                        <div class="editor-title-box">
+                            <h2>自製數織關卡</h2>
+                            <p>點擊格子繪製像素圖案，系統會即時計算行列線索並驗證唯一解！</p>
+                        </div>
+
+                        <div class="editor-meta-inputs">
+                            <div class="input-field">
+                                <label for="editor-puzzle-name">關卡名稱：</label>
+                                <input type="text" id="editor-puzzle-name" placeholder="例如：我的原創飛船" value="我的原創謎題">
+                            </div>
+
+                            <div class="input-field">
+                                <label for="editor-size-select">棋盤大小：</label>
+                                <select id="editor-size-select">
+                                    <option value="5">5 × 5 (新手)</option>
+                                    <option value="10" selected>10 × 10 (進階)</option>
+                                    <option value="15">15 × 15 (大師)</option>
+                                    <option value="20">20 × 20 (專家)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="editor-main-area">
+                        <!-- Left Palette & Actions Toolbar -->
+                        <div class="editor-sidebar">
+                            <div class="palette-box">
+                                <label>通關彩色揭曉色彩：</label>
+                                <div class="color-palette" id="editor-color-palette">
+                                    <button class="palette-color active" style="background: #3b82f6;" data-color="#3b82f6"></button>
+                                    <button class="palette-color" style="background: #ef4444;" data-color="#ef4444"></button>
+                                    <button class="palette-color" style="background: #10b981;" data-color="#10b981"></button>
+                                    <button class="palette-color" style="background: #f59e0b;" data-color="#f59e0b"></button>
+                                    <button class="palette-color" style="background: #8b5cf6;" data-color="#8b5cf6"></button>
+                                    <button class="palette-color" style="background: #ec4899;" data-color="#ec4899"></button>
+                                    <button class="palette-color" style="background: #14b8a6;" data-color="#14b8a6"></button>
+                                    <button class="palette-color" style="background: #f97316;" data-color="#f97316"></button>
+                                    <button class="palette-color" style="background: #64748b;" data-color="#64748b"></button>
+                                    <button class="palette-color" style="background: #1e293b;" data-color="#1e293b"></button>
+                                </div>
+                                <div class="custom-color-picker">
+                                    <input type="color" id="editor-custom-color" value="#3b82f6">
+                                    <span>自訂色彩</span>
+                                </div>
+                            </div>
+
+                            <div class="editor-actions-list">
+                                <button id="btn-editor-invert" class="btn btn-secondary btn-full">反轉黑白</button>
+                                <button id="btn-editor-clear" class="btn btn-secondary btn-full">清空畫布</button>
+                                <button id="btn-editor-verify" class="btn btn-primary btn-full">
+                                    <span>🔍 唯一解驗證</span>
+                                </button>
+                                <div id="editor-verify-result" class="verify-badge hidden"></div>
+                            </div>
+
+                            <div class="editor-save-group">
+                                <button id="btn-editor-playtest" class="btn btn-success btn-full">▶ 立即測試遊玩</button>
+                                <button id="btn-editor-save" class="btn btn-primary btn-full">💾 儲存至自訂關卡庫</button>
+                                <button id="btn-editor-export" class="btn btn-ghost btn-full">📋 匯出分享代碼</button>
+                                <button id="btn-editor-import" class="btn btn-ghost btn-full">📥 匯入代碼</button>
+                            </div>
+                        </div>
+
+                        <!-- Right Interactive Editor Board -->
+                        <div class="editor-board-wrapper">
+                            <div class="editor-board-scroll">
+                                <div id="editor-board-grid-wrapper" class="board-wrapper">
+                                    <div class="clue-corner"></div>
+                                    <div class="col-clues-container" id="editor-col-clues"></div>
+                                    <div class="row-clues-container" id="editor-row-clues"></div>
+                                    <div class="nonogram-grid" id="editor-grid"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- Screen 4: Image to Nonogram Converter -->
+            <!-- ========================================== -->
+            <section id="screen-converter" class="screen-panel">
+                <div class="converter-container">
+                    <div class="converter-header">
+                        <h2>圖片轉數織 (Image to Nonogram)</h2>
+                        <p>上傳照片、Logo 或像素圖，自訂閥值與網點演算法，立即生成數織關卡！</p>
+                    </div>
+
+                    <div class="converter-content">
+                        <!-- Left Controls and Upload Area -->
+                        <div class="converter-controls">
+                            <!-- Dropzone -->
+                            <div class="dropzone" id="image-dropzone">
+                                <input type="file" id="image-file-input" accept="image/*" class="dropzone-input">
+                                <div class="dropzone-prompt">
+                                    <span class="dropzone-icon">📁</span>
+                                    <p>拖曳圖片至此處，或<strong>點擊選擇圖片</strong></p>
+                                    <span class="dropzone-sub">支援 PNG、JPG、WEBP、SVG</span>
+                                </div>
+                            </div>
+
+                            <!-- Parameters Adjustments -->
+                            <div class="control-group">
+                                <label for="converter-size">網格尺寸：</label>
+                                <select id="converter-size">
+                                    <option value="5">5 × 5</option>
+                                    <option value="10" selected>10 × 10</option>
+                                    <option value="15">15 × 15</option>
+                                    <option value="20">20 × 20</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group">
+                                <div class="label-with-value">
+                                    <label for="converter-threshold">黑白閥值 (Threshold)：</label>
+                                    <span id="threshold-val">128</span>
+                                </div>
+                                <input type="range" id="converter-threshold" min="0" max="255" value="128">
+                            </div>
+
+                            <div class="control-group">
+                                <div class="label-with-value">
+                                    <label for="converter-contrast">對比度增益 (Contrast)：</label>
+                                    <span id="contrast-val">0</span>
+                                </div>
+                                <input type="range" id="converter-contrast" min="-100" max="100" value="0">
+                            </div>
+
+                            <div class="control-checkboxes">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="converter-dither">
+                                    <span>啟用 Floyd-Steinberg 誤差擴散網點 (適合照片)</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="converter-invert">
+                                    <span>色彩反轉 (黑白反轉)</span>
+                                </label>
+                            </div>
+
+                            <div class="control-actions">
+                                <button id="btn-converter-play" class="btn btn-success btn-full" disabled>
+                                    ▶ 轉為謎題並立即遊玩
+                                </button>
+                                <button id="btn-converter-save" class="btn btn-primary btn-full" disabled>
+                                    💾 保存至自訂關卡庫
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Right Preview Area -->
+                        <div class="converter-preview-area">
+                            <div class="preview-box">
+                                <h4>原始圖片預覽</h4>
+                                <div class="preview-canvas-wrapper" id="original-preview-wrapper">
+                                    <div class="preview-placeholder">請先上傳圖片</div>
+                                </div>
+                            </div>
+
+                            <div class="preview-box">
+                                <h4>數織點陣效果預覽</h4>
+                                <div class="preview-canvas-wrapper" id="converter-pixel-preview">
+                                    <div class="preview-placeholder">調整參數以預覽</div>
+                                </div>
+                                <div id="converter-solvability-info" class="solvability-tag hidden"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- ========================================== -->
+        <!-- Modal: Victory Celebration -->
+        <!-- ========================================== -->
+        <div id="modal-victory" class="modal-overlay hidden">
+            <div class="modal-card victory-card">
+                <div class="victory-header">
+                    <span class="victory-trophy">🏆</span>
+                    <h2>恭喜通關！</h2>
+                    <p id="victory-level-title" class="victory-puzzle-name">溫暖愛心</p>
+                </div>
+
+                <!-- Full Color Revealed Pixel Artwork -->
+                <div class="pixel-art-reveal-container">
+                    <div id="victory-art-canvas" class="victory-art-grid">
+                        <!-- Populated with colorful pixels -->
+                    </div>
+                </div>
+
+                <!-- Score & Stats Breakdown -->
+                <div class="victory-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">通關耗時</span>
+                        <span id="victory-time" class="stat-val">01:42</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">評級</span>
+                        <span id="victory-stars" class="stat-val stars-val">⭐⭐⭐</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">失誤次數</span>
+                        <span id="victory-mistakes" class="stat-val">0</span>
+                    </div>
+                </div>
+
+                <div class="victory-actions">
+                    <button id="btn-next-level" class="btn btn-primary btn-lg">下一關卡 ▶</button>
+                    <button id="btn-replay-level" class="btn btn-secondary">再玩一次</button>
+                    <button id="btn-victory-back" class="btn btn-ghost">返回關卡選單</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- Modal: Tutorial & Rules -->
+        <!-- ========================================== -->
+        <div id="modal-tutorial" class="modal-overlay hidden">
+            <div class="modal-card modal-lg">
+                <div class="modal-header">
+                    <h3>📖 Nonogram 數織新手指南與解謎密技</h3>
+                    <button class="modal-close" id="btn-close-tutorial">×</button>
+                </div>
+                <div class="modal-body tutorial-body">
+                    <div class="tutorial-section">
+                        <h4>1. 什麼是數織 (Nonogram)？</h4>
+                        <p>數織（又稱 Picross 或邏輯方塊）是一種依據數字線索推導圖案的邏輯解謎遊戲。在方格棋盤的每一行（上方）與每一列（左側），都標示著一組連續填色方塊長度的數字。</p>
+                        <div class="tutorial-tip">
+                            例如：數字 <strong>[3 2]</strong> 代表該行列中有一段長度為 3 的方塊、以及一段長度為 2 的方塊，且兩段之間<strong>至少相隔 1 個空白格（叉叉）</strong>。
+                        </div>
+                    </div>
+
+                    <div class="tutorial-section">
+                        <h4>2. 核心密技一：重疊推導法 (Overlapping)</h4>
+                        <p>當某個數字較大時，無論這段方塊從最左端開始排、還是從最右端開始排，中間重疊的區域<strong>必定要填色</strong>！</p>
+                        <div class="tutorial-diagram">
+                            <div class="diag-row">
+                                <span class="diag-label">線索 4 (在 5 格中) 最左：</span>
+                                <div class="diag-cells">
+                                    <span class="cell fill">■</span>
+                                    <span class="cell fill">■</span>
+                                    <span class="cell fill">■</span>
+                                    <span class="cell fill">■</span>
+                                    <span class="cell cross">×</span>
+                                </div>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">線索 4 最右：</span>
+                                <div class="diag-cells">
+                                    <span class="cell cross">×</span>
+                                    <span class="cell fill">■</span>
+                                    <span class="cell fill">■</span>
+                                    <span class="cell fill">■</span>
+                                    <span class="cell fill">■</span>
+                                </div>
+                            </div>
+                            <div class="diag-row highlight">
+                                <span class="diag-label">➜ 必定填色（取交集）：</span>
+                                <div class="diag-cells">
+                                    <span class="cell empty"></span>
+                                    <span class="cell fill-certain">■</span>
+                                    <span class="cell fill-certain">■</span>
+                                    <span class="cell fill-certain">■</span>
+                                    <span class="cell empty"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tutorial-section">
+                        <h4>3. 核心密技二：邊緣延伸與死角打叉</h4>
+                        <p>當邊緣緊鄰的方塊確定後，若線索為 3，則必定向內延伸 3 格；填滿後其外側的一格必定為叉叉！如果某個狹小空間已經容納不下剩餘線索最小長度的方塊，該空間即可直接全部標記打叉（❌）。</p>
+                    </div>
+
+                    <div class="tutorial-section">
+                        <h4>4. 操作捷徑與鍵盤操作</h4>
+                        <table class="shortcuts-table">
+                            <tr><th>操作動作</th><th>滑鼠操作</th><th>鍵盤快速鍵</th></tr>
+                            <tr><td>填滿格子 (■)</td><td>滑鼠左鍵點擊 / 拖曳</td><td><kbd>Space</kbd> 或 <kbd>Z</kbd></td></tr>
+                            <tr><td>標記叉叉 (❌)</td><td>滑鼠右鍵點擊 / 拖曳</td><td><kbd>X</kbd></td></tr>
+                            <tr><td>標記疑問 (?)</td><td>切換疑問工具</td><td><kbd>C</kbd></td></tr>
+                            <tr><td>移動游標</td><td>滑鼠懸停</td><td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> / 方向鍵</td></tr>
+                            <tr><td>復原 / 重做</td><td>點擊頂部箭頭</td><td><kbd>Ctrl + Z</kbd> / <kbd>Ctrl + Y</kbd></td></tr>
+                            <tr><td>邏輯提示</td><td>點擊頂部提示鈕</td><td><kbd>H</kbd></td></tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="btn-got-it">我懂了，開始挑戰！</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- Modal: Settings -->
+        <!-- ========================================== -->
+        <div id="modal-settings" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>⚙️ 遊戲偏好設定</h3>
+                    <button class="modal-close" id="btn-close-settings">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-title">主題視覺風格</span>
+                            <span class="setting-desc">選擇您喜愛的色彩風格</span>
+                        </div>
+                        <select id="setting-theme">
+                            <option value="dark">🌑 潮流深色 (Dark)</option>
+                            <option value="light">☀️ 簡約淺色 (Light)</option>
+                            <option value="retro">👾 經典 Game Boy 復古綠</option>
+                            <option value="cyber">⚡ 賽博霓虹 (Cyberpunk)</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-title">遊戲音效</span>
+                            <span class="setting-desc">開啟點擊、填色與通關音效</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="setting-sound" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-title">音效音量</span>
+                            <span class="setting-desc" id="setting-volume-desc">調節遊戲音效大小 (60%)</span>
+                        </div>
+                        <div style="width: 130px; display: flex; align-items: center; gap: 8px;">
+                            <input type="range" id="setting-volume" min="0" max="100" value="60" style="width: 100%; cursor: pointer;">
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-title">行列完成自動打叉</span>
+                            <span class="setting-desc">當某行列方塊滿足時自動將剩餘空格補叉</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="setting-auto-cross" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-title">拖曳方向智慧鎖定</span>
+                            <span class="setting-desc">滑鼠/觸控拖曳時鎖定橫向或縱向，防止誤觸</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="setting-direction-lock" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-title">十字準心高亮</span>
+                            <span class="setting-desc">游標所在之行與列自動高亮</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="setting-highlight-cross" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-title">嚴格挑戰模式 (3 顆心心)</span>
+                            <span class="setting-desc">填錯時立即扣血，3 次失誤則失敗</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="setting-strict-mode">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-danger-zone">
+                        <button id="btn-clear-all-data" class="btn btn-danger btn-full">
+                            ⚠️ 清除所有通關紀錄與自訂關卡
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- Modal: Share / Import Code -->
+        <!-- ========================================== -->
+        <div id="modal-share" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3 id="share-modal-title">關卡分享碼</h3>
+                    <button class="modal-close" id="btn-close-share">×</button>
+                </div>
+                <div class="modal-body">
+                    <p id="share-modal-desc">複製下方代碼分享給好友，或在下方貼上代碼匯入關卡：</p>
+                    <textarea id="share-code-textarea" rows="5" class="code-textarea" placeholder="貼上關卡代碼..."></textarea>
+                    <div id="share-modal-status" class="status-msg hidden"></div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btn-copy-code" class="btn btn-secondary">複製到剪貼簿</button>
+                    <button id="btn-confirm-import" class="btn btn-primary">匯入關卡</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- Modal: Random Level Generator -->
+        <!-- ========================================== -->
+        <div id="modal-random-level" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>🎲 隨機生成關卡</h3>
+                    <button class="modal-close" id="btn-close-random">×</button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-intro">智慧演算法即時演算，保證<strong>100% 邏輯有跡可循</strong>，純靠行列交叉推導即可破關，絕無需賭運氣或猜測的盲點！</p>
+                    
+                    <div class="form-group">
+                        <label class="form-label">選擇謎題尺寸：</label>
+                        <div class="segmented-control" id="random-size-select">
+                            <button type="button" class="segment-btn active" data-size="5">5 × 5 (入門新手)</button>
+                            <button type="button" class="segment-btn" data-size="10">10 × 10 (趣味進階)</button>
+                            <button type="button" class="segment-btn" data-size="15">15 × 15 (邏輯高手)</button>
+                        </div>
+                    </div>
+
+                    <div class="random-badge-tip">
+                        <span>✨ 特色保證：每個題目皆自動演算線索唯一解，通關後揭曉驚喜像素畫！</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-random">取消</button>
+                    <button type="button" class="btn btn-primary" id="btn-start-random-game">🚀 產生並開始遊玩</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- Modal: Print / Worksheet Generator -->
+        <!-- ========================================== -->
+        <div id="modal-print" class="modal-overlay hidden">
+            <div class="modal-card modal-large print-modal-card">
+                <div class="modal-header">
+                    <div class="modal-header-titles">
+                        <h3>🖨️ 數織學習單 / 試卷列印生成器</h3>
+                        <span class="modal-header-sub">標準 A4 尺寸・題目卷與答案卷・支援 5×5 與 10×10 題目</span>
+                    </div>
+                    <button class="modal-close" id="btn-close-print">×</button>
+                </div>
+                <div class="modal-body print-modal-body">
+                    <!-- Left Toolbar Panel -->
+                    <div class="print-controls-panel">
+                        <div class="print-setting-block">
+                            <label class="print-block-label">1. 題目網格尺寸</label>
+                            <div class="print-size-selector">
+                                <button type="button" class="print-size-btn active" data-size="5">
+                                    <span class="size-title">5 × 5</span>
+                                    <span class="size-sub">適合初學、兒童與休閒</span>
+                                </button>
+                                <button type="button" class="print-size-btn" data-size="10">
+                                    <span class="size-title">10 × 10</span>
+                                    <span class="size-sub">標準進階挑戰</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="print-setting-block">
+                            <label class="print-block-label">2. 列印題數 (份數)</label>
+                            <div class="print-count-chips">
+                                <button type="button" class="print-count-chip" data-count="1">1 題</button>
+                                <button type="button" class="print-count-chip" data-count="2">2 題</button>
+                                <button type="button" class="print-count-chip active" data-count="4">4 題</button>
+                                <button type="button" class="print-count-chip" data-count="6">6 題</button>
+                                <button type="button" class="print-count-chip" data-count="8">8 題</button>
+                                <button type="button" class="print-count-chip" data-count="9">9 題</button>
+                                <button type="button" class="print-count-chip" data-count="12">12 題</button>
+                                <button type="button" class="print-count-chip" data-count="16">16 題</button>
+                            </div>
+                            <div class="print-count-custom-row">
+                                <span>自訂題數：</span>
+                                <div class="stepper-input">
+                                    <button type="button" id="btn-print-count-minus" class="step-btn">-</button>
+                                    <input type="number" id="print-count-input" min="1" max="16" value="4">
+                                    <button type="button" id="btn-print-count-plus" class="step-btn">+</button>
+                                </div>
+                                <span class="stepper-hint">(最多 16 題，頁首精簡最大化題數)</span>
+                            </div>
+                        </div>
+
+                        <div class="print-setting-block">
+                            <label class="print-block-label">3. 題目來源</label>
+                            <div class="print-radio-group">
+                                <label class="print-radio-label">
+                                    <input type="radio" name="print-source" value="random" checked>
+                                    <span>🎲 隨機全新生成 (100% 邏輯有跡可循唯一解)</span>
+                                </label>
+                                <label class="print-radio-label">
+                                    <input type="radio" name="print-source" value="builtin">
+                                    <span>📚 精選冒險題庫 (收錄經典造型像素畫)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="print-setting-block">
+                            <label class="print-block-label">4. 列印項目勾選</label>
+                            <div class="print-checkbox-group">
+                                <label class="print-check-label">
+                                    <input type="checkbox" id="print-chk-questions" checked>
+                                    <span>📄 題目卷（含作答網格、姓名與評分欄）</span>
+                                </label>
+                                <label class="print-check-label">
+                                    <input type="checkbox" id="print-chk-answers" checked>
+                                    <span>🔑 答案卷（<b>包含題目數字線索</b>與解答對照）</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="print-actions-block">
+                            <button type="button" class="btn btn-secondary btn-full" id="btn-regenerate-print">
+                                🔄 重新換一批題目
+                            </button>
+                            <button type="button" class="btn btn-primary btn-full btn-lg" id="btn-do-print">
+                                🖨️ 開始列印 / 另存為 PDF (A4)
+                            </button>
+                            <div class="print-tip-note">
+                                💡 列印紙張尺寸預設為 <b>A4</b>，系統已自動調整版面格線防切，列印設定請確認選擇「A4」與「直向」。
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Live Sheet Preview Area -->
+                    <div class="print-preview-panel">
+                        <div class="preview-panel-header">
+                            <div class="preview-tabs">
+                                <button type="button" class="preview-tab-btn active" data-tab="all">全部預覽</button>
+                                <button type="button" class="preview-tab-btn" data-tab="questions">📄 題目卷預覽</button>
+                                <button type="button" class="preview-tab-btn" data-tab="answers">🔑 答案卷預覽</button>
+                            </div>
+                            <span class="preview-badge">A4 即時排版預覽</span>
+                        </div>
+                        <div class="preview-scroll-viewport">
+                            <div id="print-preview-loading" class="print-preview-loading hidden">
+                                <div class="spinner"></div>
+                                <span>正在為您生成邏輯有跡可循的數織試卷...</span>
+                            </div>
+                            <div id="print-preview-sheets" class="print-preview-sheets">
+                                <!-- Rendered dynamically by printer.js -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dedicated Container for Browser @media print -->
+    <div id="printable-area" class="printable-area"></div>
+
+    <!-- Scripts (Zero external dependencies) -->
+    <script src="js/audio.js"></script>
+    <script src="js/levels.js"></script>
+    <script src="js/solver.js"></script>
+    <script src="js/board.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/generator.js"></script>
+    <script src="js/printer.js"></script>
+    <script src="js/image-converter.js"></script>
+    <script src="js/editor.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
