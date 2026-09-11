@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 與圖片雙向轉檔工具</title>
+  <!-- jsPDF 用於圖片轉 PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- pdf.js 用於 PDF 轉圖片 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- pdf.worker.js 用於 Web Worker 與主執行緒備援 (Fake Worker) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --card-hover: #27354f;
+      --accent-color: #6366f1;
+      --accent-hover: #4f46e5;
+      --danger-color: #ef4444;
+      --danger-hover: #dc2626;
+      --success-color: #10b981;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --border-color: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      background: linear-gradient(135deg, #818cf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+      font-weight: 800;
+    }
+
+    header p {
+      color: var(--text-sub);
+      font-size: 1rem;
+    }
+
+    /* 頁籤 Tab 樣式 */
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-sub);
+      font-size: 1.05rem;
+      font-weight: 600;
+      padding: 0.6rem 1.6rem;
+      cursor: pointer;
+      border-radius: 0.6rem;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .tab-btn.active {
+      background: var(--card-bg);
+      color: #a5b4fc;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    .drop-zone {
+      background-color: var(--card-bg);
+      border: 2px dashed var(--border-color);
+      border-radius: 1rem;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent-color);
+      background-color: rgba(99, 102, 241, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .drop-zone svg {
+      width: 48px;
+      height: 48px;
+      stroke: var(--accent-color);
+      margin-bottom: 1rem;
+    }
+
+    .drop-zone p {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .drop-zone span {
+      color: var(--text-sub);
+      font-size: 0.9rem;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .controls {
+      background: var(--card-bg);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid var(--border-color);
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .control-group label {
+      font-size: 0.92rem;
+      color: var(--text-sub);
+      font-weight: 500;
+    }
+
+    select, input[type="text"] {
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.5rem 0.8rem;
+      border-radius: 0.5rem;
+      outline: none;
+      font-size: 0.92rem;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: var(--accent-color);
+    }
+
+    .btn {
+      background: var(--accent-color);
+      color: white;
+      border: none;
+      padding: 0.55rem 1.3rem;
+      border-radius: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      text-decoration: none;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-sub);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border-color: var(--text-sub);
+    }
+
+    .btn-danger {
+      background: transparent;
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: #f87171;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: var(--danger-color);
+      color: #ffffff;
+    }
+
+    .btn-sm {
+      padding: 0.35rem 0.75rem;
+      font-size: 0.82rem;
+      border-radius: 0.4rem;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.5rem;
+      padding: 0 0.25rem;
+    }
+
+    .preview-header h3 {
+      font-size: 1.05rem;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .preview-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .image-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 0.65rem;
+      padding: 0.6rem;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .image-card:hover {
+      border-color: #475569;
+      transform: translateY(-2px);
+    }
+
+    .image-wrapper {
+      width: 100%;
+      height: 160px;
+      background: #0b0f19;
+      border-radius: 0.4rem;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .image-card img, .image-card canvas {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .card-info {
+      width: 100%;
+      font-size: 0.82rem;
+      color: var(--text-sub);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .card-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.25rem;
+      margin-top: 0.2rem;
+    }
+
+    .sort-btn-group {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      cursor: pointer;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.35rem;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+    }
+
+    .icon-btn:hover:not(:disabled) {
+      background: var(--accent-color);
+      border-color: var(--accent-color);
+    }
+
+    .icon-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+    }
+
+    .delete-btn {
+      color: #ef4444;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .delete-btn:hover:not(:disabled) {
+      background: #ef4444;
+      color: white;
+    }
+
+    .page-num {
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
+      padding: 0.15rem 0.45rem;
+      border-radius: 0.3rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .tip-box {
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 0.6rem;
+      padding: 0.8rem 1rem;
+      font-size: 0.88rem;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .tip-box strong {
+      color: #a5b4fc;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>PDF / 圖片 雙向轉檔工具</h1>
+      <p>完全純前端離線運行・零上傳隱私安全・高解析度文字清晰</p>
+    </header>
+
+    <!-- 功能頁籤切換 -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tabBtnImgToPdf" onclick="switchTab('imgToPdf')">📷 圖片 ➔ PDF</button>
+      <button class="tab-btn" id="tabBtnPdfToImg" onclick="switchTab('pdfToImg')">📄 PDF ➔ PNG 圖片 (清晰文字 / 單頁或全部下載)</button>
+    </div>
+
+    <!-- 頁籤一：圖片轉 PDF -->
+    <div id="imgToPdfTab" class="tab-content active">
+      <div class="drop-zone" id="imgDropZone">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+        </svg>
+        <p>點擊選擇圖片 或 將圖片拖曳至此處</p>
+        <span>支援 JPG、PNG（透明度保留）、WEBP 等格式（可多選，支援調整順序）</span>
+        <input type="file" id="imgFileInput" multiple accept="image/*">
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label for="pdfName">檔案名稱：</label>
+          <input type="text" id="pdfName" value="images.pdf">
+        </div>
+
+        <div class="control-group">
+          <label for="pageSize">頁面尺寸：</label>
+          <select id="pageSize">
+            <option value="fit" selected>適應圖片大小 (原圖高畫質尺寸)</option>
+            <option value="a4">A4 (直向 - 自動等比居中)</option>
+            <option value="a4-landscape">A4 (橫向 - 自動等比居中)</option>
+          </select>
+        </div>
+
+        <div class="control-group" style="margin-left: auto;">
+          <button class="btn btn-secondary" id="imgClearBtn" disabled>清空圖片</button>
+          <button class="btn" id="imgConvertBtn" disabled>📥 下載 PDF</button>
+        </div>
+      </div>
+
+      <div class="preview-header" id="imgPreviewHeader" style="display: none;">
+        <h3>圖片清單 (<span id="imgCount">0</span> 張) - 可利用按鈕微調順序</h3>
+      </div>
+      <div class="preview-container" id="imgPreviewContainer"></div>
+    </div>
+
+    <!-- 頁籤二：PDF 轉 PNG -->
+    <div id="pdfToImgTab" class="tab-content">
+      <div class="drop-zone" id="pdfDropZone">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+        </svg>
+        <p>點擊選擇 PDF 檔案 或 將 PDF 拖曳至此處</p>
+        <span>支援繁體中文文字、圖表與各類 PDF（高解析度清晰字體渲染）</span>
+        <input type="file" id="pdfFileInput" accept="application/pdf">
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label for="pdfScale">轉檔解析度：</label>
+          <select id="pdfScale">
+            <option value="2.0">清晰 (2.0x / 144 DPI)</option>
+            <option value="3.0" selected>超高清 (3.0x / 216 DPI - 推薦文字銳利清晰)</option>
+            <option value="4.167">印刷級極致高清 (4.17x / 300 DPI)</option>
+            <option value="1.5">一般 (1.5x / 108 DPI - 檔案較小)</option>
+          </select>
+        </div>
+
+        <div class="control-group" style="margin-left: auto;">
+          <button class="btn btn-secondary" id="pdfClearBtn" disabled>清除 PDF</button>
+          <button class="btn btn-danger btn-sm" id="pdfCancelBtn" style="display: none;">⏹ 停止下載</button>
+          <button class="btn" id="pdfConvertBtn" disabled>📥 下載全部頁面 (PNG)</button>
+        </div>
+      </div>
+
+      <div class="tip-box" id="pdfBatchTip" style="display: none;">
+        💡 <strong>批次下載提示：</strong>點擊「下載全部頁面」將會逐頁自動下載為單獨的 PNG 檔案（檔名已自動補零如 <code>_01.png</code>、<code>_02.png</code>，方便排序）。若瀏覽器跳出「允許下載多個檔案」提示，請點選「允許」。亦可在下方預覽區直接點擊「下載此頁」個別儲存！
+      </div>
+
+      <div class="preview-header" id="pdfPreviewHeader" style="display: none;">
+        <h3>PDF 頁面預覽 (<span id="pdfPageCount">0</span> 頁) - 可個別下載單頁或點擊上方全部下載</h3>
+      </div>
+      <div class="preview-container" id="pdfPreviewContainer"></div>
+    </div>
+
+  </div>
+
+  <script>
+    // =========================================
+    // 0. 配置 PDF.js Worker
+    // =========================================
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const { jsPDF } = window.jspdf;
+
+    // 工具函式：HTML 特殊符號轉義 (防禦 XSS)
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // 工具函式：觸發瀏覽器下載 Blob 並適時釋放 ObjectURL
+    function triggerDownloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    // --- 頁籤切換邏輯 ---
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+      if (tab === 'imgToPdf') {
+        document.getElementById('tabBtnImgToPdf').classList.add('active');
+        document.getElementById('imgToPdfTab').classList.add('active');
+      } else {
+        document.getElementById('tabBtnPdfToImg').classList.add('active');
+        document.getElementById('pdfToImgTab').classList.add('active');
+      }
+    }
+
+    // =========================================
+    // 模組 1：圖片 ➔ PDF
+    // =========================================
+    let imageFiles = [];
+    const imgDropZone = document.getElementById('imgDropZone');
+    const imgFileInput = document.getElementById('imgFileInput');
+    const imgPreviewContainer = document.getElementById('imgPreviewContainer');
+    const imgPreviewHeader = document.getElementById('imgPreviewHeader');
+    const imgCountSpan = document.getElementById('imgCount');
+    const imgConvertBtn = document.getElementById('imgConvertBtn');
+    const imgClearBtn = document.getElementById('imgClearBtn');
+    const pdfNameInput = document.getElementById('pdfName');
+    const pageSizeSelect = document.getElementById('pageSize');
+
+    imgDropZone.addEventListener('click', () => imgFileInput.click());
+
+    imgDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      imgDropZone.classList.add('dragover');
+    });
+
+    imgDropZone.addEventListener('dragleave', () => imgDropZone.classList.remove('dragover'));
+
+    imgDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      imgDropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) handleImgFiles(e.dataTransfer.files);
+    });
+
+    imgFileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleImgFiles(e.target.files);
+    });
+
+    // 非同步依序讀取所有圖片 (保證選取順序不被打亂)
+    async function handleImgFiles(files) {
+      const validImages = Array.from(files).filter(file => file.type.startsWith('image/'));
+      if (!validImages.length) {
+        alert('請選取有效的圖片檔案（如 JPG、PNG、WEBP 等）');
+        imgFileInput.value = '';
+        return;
+      }
+
+      const readPromises = validImages.map(file => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            resolve({
+              name: file.name,
+              type: file.type,
+              src: e.target.result
+            });
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      const results = await Promise.all(readPromises);
+      imageFiles.push(...results);
+      renderImgPreviews();
+      imgFileInput.value = ''; // 重置 input，確保再次選取相同檔案時可觸發 change
+    }
+
+    function renderImgPreviews() {
+      imgPreviewContainer.innerHTML = '';
+      const total = imageFiles.length;
+      imgCountSpan.textContent = total;
+      imgPreviewHeader.style.display = total > 0 ? 'flex' : 'none';
+
+      imageFiles.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = 'image-card';
+        card.innerHTML = `
+          <div class="image-wrapper">
+            <img src="${item.src}" alt="${escapeHtml(item.name)}">
+          </div>
+          <div class="card-info">
+            <div class="card-title" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+            <div class="card-actions">
+              <span class="page-num">第 ${index + 1} 頁</span>
+              <div class="sort-btn-group">
+                <button class="icon-btn" title="上移" onclick="moveImg(${index}, -1)" ${index === 0 ? 'disabled' : ''}>←</button>
+                <button class="icon-btn" title="下移" onclick="moveImg(${index}, 1)" ${index === total - 1 ? 'disabled' : ''}>→</button>
+                <button class="icon-btn delete-btn" title="刪除" onclick="removeImg(${index})">✕</button>
+              </div>
+            </div>
+          </div>
+        `;
+        imgPreviewContainer.appendChild(card);
+      });
+
+      const hasImages = total > 0;
+      imgConvertBtn.disabled = !hasImages;
+      imgClearBtn.disabled = !hasImages;
+
+      if (hasImages) {
+        let firstName = imageFiles[0].name.replace(/\.[^/.]+$/, "");
+        pdfNameInput.value = firstName + ".pdf";
+      } else {
+        pdfNameInput.value = "images.pdf";
+      }
+    }
+
+    // 調整圖片順序
+    window.moveImg = function(index, delta) {
+      const target = index + delta;
+      if (target < 0 || target >= imageFiles.length) return;
+      const [item] = imageFiles.splice(index, 1);
+      imageFiles.splice(target, 0, item);
+      renderImgPreviews();
+    };
+
+    window.removeImg = function(index) {
+      imageFiles.splice(index, 1);
+      renderImgPreviews();
+    };
+
+    imgClearBtn.addEventListener('click', () => {
+      imageFiles = [];
+      renderImgPreviews();
+      imgFileInput.value = '';
+    });
+
+    // 載入圖片並取得真實尺寸與安全相容的格式資料
+    function loadImageAsync(item) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const width = img.naturalWidth || img.width;
+          const height = img.naturalHeight || img.height;
+
+          // 處理 WEBP 或透明 PNG 的相容性轉換
+          const isWebp = item.type === 'image/webp' || item.name.toLowerCase().endsWith('.webp');
+          const isPng = item.type === 'image/png' || item.src.startsWith('data:image/png');
+
+          if (isWebp) {
+            // WEBP 先透過 Canvas 轉成 PNG DataURL 以相容 jsPDF
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            resolve({
+              width,
+              height,
+              dataUrl: canvas.toDataURL('image/png'),
+              format: 'PNG'
+            });
+          } else if (isPng) {
+            resolve({
+              width,
+              height,
+              dataUrl: item.src,
+              format: 'PNG'
+            });
+          } else {
+            resolve({
+              width,
+              height,
+              dataUrl: item.src,
+              format: 'JPEG'
+            });
+          }
+        };
+        img.onerror = () => reject(new Error(`圖片載入失敗: ${item.name}`));
+        img.src = item.src;
+      });
+    }
+
+    imgConvertBtn.addEventListener('click', async () => {
+      if (!imageFiles.length) return;
+      imgConvertBtn.disabled = true;
+      imgConvertBtn.textContent = '準備圖片中...';
+
+      try {
+        const sizeSetting = pageSizeSelect.value;
+        let doc = null;
+
+        for (let i = 0; i < imageFiles.length; i++) {
+          imgConvertBtn.textContent = `處理中 (${i + 1}/${imageFiles.length})...`;
+          const { width, height, format, dataUrl } = await loadImageAsync(imageFiles[i]);
+
+          if (i === 0) {
+            if (sizeSetting === 'fit') {
+              doc = new jsPDF({
+                orientation: width > height ? 'l' : 'p',
+                unit: 'px',
+                format: [width, height],
+                hotfixes: ['px_scaling']
+              });
+            } else if (sizeSetting === 'a4-landscape') {
+              doc = new jsPDF('l', 'mm', 'a4');
+            } else {
+              doc = new jsPDF('p', 'mm', 'a4');
+            }
+          } else {
+            if (sizeSetting === 'fit') {
+              doc.addPage([width, height], width > height ? 'l' : 'p');
+            } else if (sizeSetting === 'a4-landscape') {
+              doc.addPage('a4', 'l');
+            } else {
+              doc.addPage('a4', 'p');
+            }
+          }
+
+          if (sizeSetting === 'fit') {
+            doc.addImage(dataUrl, format, 0, 0, width, height);
+          } else {
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const ratio = Math.min(pageWidth / width, pageHeight / height);
+            const renderW = width * ratio;
+            const renderH = height * ratio;
+            const x = (pageWidth - renderW) / 2;
+            const y = (pageHeight - renderH) / 2;
+            doc.addImage(dataUrl, format, x, y, renderW, renderH);
+          }
+        }
+
+        let fileName = pdfNameInput.value.trim() || 'images.pdf';
+        if (!fileName.toLowerCase().endsWith('.pdf')) fileName += '.pdf';
+        doc.save(fileName);
+      } catch (err) {
+        alert('轉檔失敗：' + err.message);
+      } finally {
+        imgConvertBtn.disabled = false;
+        imgConvertBtn.textContent = '📥 下載 PDF';
+      }
+    });
+
+    // =========================================
+    // 模組 2：PDF ➔ PNG 圖片 (文字銳利化、單頁與全部下載)
+    // =========================================
+    let currentPdfDoc = null;
+    let currentPdfName = '';
+    let isBatchDownloading = false;
+    let shouldCancelBatch = false;
+
+    const pdfDropZone = document.getElementById('pdfDropZone');
+    const pdfFileInput = document.getElementById('pdfFileInput');
+    const pdfPreviewContainer = document.getElementById('pdfPreviewContainer');
+    const pdfPreviewHeader = document.getElementById('pdfPreviewHeader');
+    const pdfPageCountSpan = document.getElementById('pdfPageCount');
+    const pdfBatchTip = document.getElementById('pdfBatchTip');
+    const pdfConvertBtn = document.getElementById('pdfConvertBtn');
+    const pdfCancelBtn = document.getElementById('pdfCancelBtn');
+    const pdfClearBtn = document.getElementById('pdfClearBtn');
+    const pdfScaleSelect = document.getElementById('pdfScale');
+
+    pdfDropZone.addEventListener('click', () => pdfFileInput.click());
+
+    pdfDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      pdfDropZone.classList.add('dragover');
+    });
+
+    pdfDropZone.addEventListener('dragleave', () => pdfDropZone.classList.remove('dragover'));
+
+    pdfDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      pdfDropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) handlePdfFile(e.dataTransfer.files[0]);
+    });
+
+    pdfFileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handlePdfFile(e.target.files[0]);
+    });
+
+    async function handlePdfFile(file) {
+      if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+        alert('請選擇 PDF 格式的檔案');
+        pdfFileInput.value = '';
+        return;
+      }
+
+      currentPdfName = file.name.replace(/\.[^/.]+$/, "");
+      pdfPreviewContainer.innerHTML = '<p style="color: var(--text-sub); grid-column: 1/-1; padding: 2rem 0; text-align: center;">正在解析 PDF 頁面中，請稍候...</p>';
+      pdfPreviewHeader.style.display = 'none';
+      pdfBatchTip.style.display = 'none';
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        if (currentPdfDoc) {
+          currentPdfDoc.destroy();
+        }
+        currentPdfDoc = await pdfjsLib.getDocument({
+          data: arrayBuffer,
+          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+          cMapPacked: true,
+        }).promise;
+        await renderPdfPreviews();
+        pdfConvertBtn.disabled = false;
+        pdfClearBtn.disabled = false;
+        pdfBatchTip.style.display = 'block';
+      } catch (err) {
+        alert('無法解析此 PDF 檔案：' + err.message);
+        pdfPreviewContainer.innerHTML = '';
+      } finally {
+        pdfFileInput.value = '';
+      }
+    }
+
+    // 核心渲染方法：確保純白不透明背景與清晰字型渲染
+    async function renderPageToCanvas(page, scale) {
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d', { alpha: false }); // 關閉 alpha 提升文字邊緣清晰度
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+
+      // 填入純白色背景，確保在任何預覽器中黑字或彩字都清晰可見，不透明
+      context.fillStyle = '#FFFFFF';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+
+      await page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise;
+
+      return canvas;
+    }
+
+    // 將 Canvas 轉為 Blob
+    function canvasToBlobAsync(canvas, type = 'image/png') {
+      return new Promise((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), type);
+      });
+    }
+
+    // 渲染 PDF 各頁縮圖預覽
+    async function renderPdfPreviews() {
+      pdfPreviewContainer.innerHTML = '';
+      const numPages = currentPdfDoc.numPages;
+      pdfPageCountSpan.textContent = numPages;
+      pdfPreviewHeader.style.display = 'flex';
+
+      const padLength = Math.max(2, String(numPages).length);
+
+      for (let i = 1; i <= numPages; i++) {
+        const page = await currentPdfDoc.getPage(i);
+        // 預覽縮圖使用 0.45x 適中解析度兼顧效能與清晰度
+        const canvas = await renderPageToCanvas(page, 0.45);
+        page.cleanup();
+
+        const pageStr = String(i).padStart(padLength, '0');
+        const card = document.createElement('div');
+        card.className = 'image-card';
+        card.innerHTML = `
+          <div class="image-wrapper"></div>
+          <div class="card-info">
+            <div class="card-title" title="${escapeHtml(currentPdfName)}_頁${pageStr}.png">頁碼: ${i} / ${numPages}</div>
+            <div class="card-actions" style="margin-top: 0.35rem;">
+              <button class="btn btn-sm" style="width: 100%;" onclick="downloadSinglePage(${i})">
+                ⬇ 下載此頁 PNG
+              </button>
+            </div>
+          </div>
+        `;
+        card.querySelector('.image-wrapper').appendChild(canvas);
+        pdfPreviewContainer.appendChild(card);
+      }
+    }
+
+    // 下載單頁 PNG
+    window.downloadSinglePage = async function(pageNum) {
+      if (!currentPdfDoc) return;
+      try {
+        const scale = parseFloat(pdfScaleSelect.value) || 3.0;
+        const page = await currentPdfDoc.getPage(pageNum);
+        const canvas = await renderPageToCanvas(page, scale);
+        const blob = await canvasToBlobAsync(canvas, 'image/png');
+        page.cleanup();
+
+        const padLength = Math.max(2, String(currentPdfDoc.numPages).length);
+        const pageStr = String(pageNum).padStart(padLength, '0');
+        triggerDownloadBlob(blob, `${currentPdfName}_${pageStr}.png`);
+      } catch (err) {
+        alert(`下載第 ${pageNum} 頁失敗：` + err.message);
+      }
+    };
+
+    // 清除 PDF
+    pdfClearBtn.addEventListener('click', () => {
+      if (currentPdfDoc) {
+        currentPdfDoc.destroy();
+        currentPdfDoc = null;
+      }
+      currentPdfName = '';
+      pdfPreviewContainer.innerHTML = '';
+      pdfPreviewHeader.style.display = 'none';
+      pdfBatchTip.style.display = 'none';
+      pdfConvertBtn.disabled = true;
+      pdfClearBtn.disabled = true;
+      pdfCancelBtn.style.display = 'none';
+      pdfFileInput.value = '';
+    });
+
+    // 停止批次下載
+    pdfCancelBtn.addEventListener('click', () => {
+      shouldCancelBatch = true;
+      pdfCancelBtn.textContent = '停止中...';
+      pdfCancelBtn.disabled = true;
+    });
+
+    // 下載全部頁面 (單獨 PNG 檔案逐頁下載)
+    pdfConvertBtn.addEventListener('click', async () => {
+      if (!currentPdfDoc || isBatchDownloading) return;
+
+      isBatchDownloading = true;
+      shouldCancelBatch = false;
+      pdfConvertBtn.disabled = true;
+      pdfClearBtn.disabled = true;
+      pdfCancelBtn.style.display = 'inline-flex';
+      pdfCancelBtn.textContent = '⏹ 停止下載';
+      pdfCancelBtn.disabled = false;
+
+      const numPages = currentPdfDoc.numPages;
+      const scale = parseFloat(pdfScaleSelect.value) || 3.0;
+      const padLength = Math.max(2, String(numPages).length);
+
+      try {
+        for (let i = 1; i <= numPages; i++) {
+          if (shouldCancelBatch) {
+            alert('已停止後續頁面的批次下載。');
+            break;
+          }
+
+          pdfConvertBtn.textContent = `下載中 (${i}/${numPages})...`;
+          const page = await currentPdfDoc.getPage(i);
+          const canvas = await renderPageToCanvas(page, scale);
+          const blob = await canvasToBlobAsync(canvas, 'image/png');
+          page.cleanup();
+
+          const pageStr = String(i).padStart(padLength, '0');
+          triggerDownloadBlob(blob, `${currentPdfName}_${pageStr}.png`);
+
+          // 適當延遲 350ms，避免瀏覽器同時觸發太多下載被安全機制攔截
+          if (i < numPages) {
+            await new Promise(r => setTimeout(r, 350));
+          }
+        }
+      } catch (err) {
+        alert('批次下載發生錯誤：' + err.message);
+      } finally {
+        isBatchDownloading = false;
+        pdfConvertBtn.disabled = false;
+        pdfClearBtn.disabled = false;
+        pdfConvertBtn.textContent = '📥 下載全部頁面 (PNG)';
+        pdfCancelBtn.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
