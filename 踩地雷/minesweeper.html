@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper Ultimate - Teacher Fu-hong</title>
+    <style>
+        :root {
+            --bg-body: #f0f2f5; --bg-card: #ffffff; --text-main: #2c3e50;
+            --cell-bg: #e2e8f0; --cell-rev: #cbd5e1; --primary: #3498db;
+            --accent: #e74c3c; --shadow: rgba(0,0,0,0.1);
+            --hint-color: #2ecc71;
+            --cell-size: 40px; 
+        }
+        [data-theme="dark"] {
+            --bg-body: #1a202c; --bg-card: #2d3748; --text-main: #edf2f7;
+            --cell-bg: #4a5568; --cell-rev: #2d3748; --primary: #63b3ed;
+        }
+
+        /* 1. 徹底禁用右鍵選單與文字選取 */
+        * { user-select: none; -webkit-user-select: none; outline: none; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg-body); color: var(--text-main); transition: 0.3s; }
+        
+        /* 2. 佈局優化：頂部狀態列 */
+        header {
+            display: flex; justify-content: center; align-items: center; gap: 50px; height: 50px; 
+            background: var(--bg-card); box-shadow: 0 2px 10px var(--shadow); z-index: 1000;
+        }
+        .header-stat { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.5rem; min-width: 100px; text-align: center; }
+
+        .main-layout { display: flex; height: calc(100vh - 50px); width: 100vw; }
+
+        /* 3. 側邊欄：縮小按鈕 */
+        .sidebar-left {
+            width: 130px; background: var(--bg-card); border-right: 1px solid var(--shadow);
+            padding: 10px; display: flex; flex-direction: column; gap: 5px; box-sizing: border-box;
+        }
+        .btn { border: none; padding: 6px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.75rem; transition: 0.2s; width: 100%; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-theme { background: #718096; color: white; }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .board-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 15px; position: relative; }
+        .mine-board { display: grid; gap: 2px; background: var(--bg-card); padding: 5px; border-radius: 8px; box-shadow: 0 10px 30px var(--shadow); }
+        
+        /* 4. 格子：物理感動畫 (凹陷、凸起、彈出) */
+        .cell {
+            width: var(--cell-size); height: var(--cell-size);
+            background-color: var(--cell-bg); border-radius: 2px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-weight: 900; font-size: calc(var(--cell-size) * 0.6);
+            transition: transform 0.1s, background-color 0.1s, box-shadow 0.1s;
+            box-shadow: inset 1.5px 1.5px 0 rgba(255,255,255,0.6), inset -1.5px -1.5px 0 rgba(0,0,0,0.1);
+        }
+
+        /* 左鍵按下的下陷感 */
+        .cell:active:not(.revealed) { transform: scale(0.92); background-color: #cbd5e1; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2); }
+
+        /* 雙鍵連動：周圍未知區域凸起 */
+        .cell.neighbor-press {
+            transform: scale(1.1) !important; 
+            background-color: #eef2f7;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2), inset 1px 1px 0 rgba(255,255,255,0.8);
+            border: 1px solid var(--primary);
+        }
+
+        .cell.revealed { background-color: var(--cell-rev); box-shadow: none; border: 0.5px solid rgba(0,0,0,0.05); transform: none !important; }
+        .cell.mine { background-color: var(--accent) !important; color: white; animation: explode 0.4s ease; }
+        .cell.flag { background-color: #ecc94b !important; animation: flag-pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        
+        @keyframes explode { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+        @keyframes flag-pop { 0% { transform: scale(0.3); } 100% { transform: scale(1); } }
+
+        /* 5. 提示特效 */
+        .cell.hint-active { animation: hint-flash 0.5s 4; background-color: var(--hint-color) !important; }
+        @keyframes hint-flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* 6. 勝利彈窗 */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 5000; }
+        .modal.show { display: flex; }
+        .modal-content { background: var(--bg-card); padding: 40px; border-radius: 20px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+
+        .n-1 { color: #3498db; } .n-2 { color: #2ecc71; } .n-3 { color: #e74c3c; } .n-4 { color: #9b59b6; }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+<header>
+    <div class="header-stat" id="mine-cnt" style="color: var(--accent);">💣 010</div>
+    <h1 style="font-size: 0.9rem; letter-spacing: 3px; opacity: 0.6;">MINESWEEPER PRO</h1>
+    <div class="header-stat" id="timer-val" style="color: var(--primary);">⏱️ 000</div>
+</header>
+
+<div class="main-layout">
+    <aside class="sidebar-left">
+        <h3 style="font-size: 0.7rem; text-align: center; opacity: 0.5;">難度</h3>
+        <button id="btn-easy" class="btn btn-theme" onclick="changeLevel('easy')">初級</button>
+        <button id="btn-medium" class="btn btn-theme" onclick="changeLevel('medium')">中級</button>
+        <button id="btn-hard" class="btn btn-theme" onclick="changeLevel('hard')">高級</button>
+        <h3 style="font-size: 0.7rem; text-align: center; opacity: 0.5; margin-top: 10px;">控制</h3>
+        <button class="btn btn-primary" onclick="initGame()">重新開始</button>
+        <button id="hint-btn" class="btn btn-theme" onclick="giveHint()">提示 (1)</button>
+        <button class="btn btn-theme" onclick="toggleTheme()">🌓 模式</button>
+    </aside>
+
+    <main class="board-container">
+        <div id="board" class="mine-board"></div>
+    </main>
+</div>
+
+<div id="win-modal" class="modal">
+    <div class="modal-content">
+        <h2 style="color:var(--hint-color); margin:0;">🏆 完美通關！</h2>
+        <p id="congrats-text" style="font-style: italic; margin: 15px 0; color: #7f8c8d;"></p>
+        <div style="font-size: 3.5rem; font-weight: bold; margin-bottom: 20px; font-family: 'Courier New';" id="finish-time"></div>
+        <button class="btn btn-primary" style="width:100%; padding: 12px; font-size: 1rem;" onclick="initGame()">再玩一場</button>
+    </div>
+</div>
+
+<script>
+    const levels = { easy: { r: 9, c: 9, m: 10 }, medium: { r: 16, c: 16, m: 40 }, hard: { r: 16, c: 30, m: 99 } };
+    const winQuotes = [" Teacher Fu-hong，您的邏輯無懈可擊！", "太精彩了！教科書級別的拆彈。", "您的指尖在雷區翩翩起舞！"];
+
+    let curLevel = 'easy', grid = [], minesLeft = 10, gameOver = false, timer = null, seconds = 0, firstMove = true;
+    let hintUsed = false;
+    let isLeftDown = false, isRightDown = false;
+
+    function updateCellSize() {
+        const container = document.querySelector('.board-container');
+        const config = levels[curLevel];
+        const finalSize = Math.min(Math.floor((container.clientWidth-40)/config.c), Math.floor((container.clientHeight-40)/config.r), 80);
+        document.documentElement.style.setProperty('--cell-size', `${finalSize}px`);
+    }
+
+    function toggleTheme() {
+        const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+        document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+    }
+
+    function changeLevel(lv) { curLevel = lv; initGame(); }
+
+    function initGame() {
+        gameOver = false; firstMove = true; seconds = 0; hintUsed = false;
+        clearInterval(timer);
+        const config = levels[curLevel];
+        minesLeft = config.m;
+        
+        document.getElementById('timer-val').innerText = `⏱️ 000`;
+        document.getElementById('hint-btn').innerText = `提示 (1)`;
+        document.getElementById('hint-btn').disabled = false;
+        document.getElementById('win-modal').classList.remove('show');
+        document.querySelectorAll('.sidebar-left .btn').forEach(b => b.classList.remove('btn-active'));
+        document.getElementById(`btn-${curLevel}`)?.classList.add('btn-active');
+
+        updateCellSize();
+        const board = document.getElementById('board');
+        board.style.gridTemplateColumns = `repeat(${config.c}, 1fr)`;
+        board.innerHTML = '';
+        grid = [];
+
+        for (let r = 0; r < config.r; r++) {
+            let row = [];
+            for (let c = 0; c < config.c; c++) {
+                const cell = { r, c, isMine: false, isRev: false, isFlag: false, count: 0, el: document.createElement('div') };
+                cell.el.className = 'cell';
+                
+                // 核心事件處理：同時處理凹陷、凸起與功能
+                cell.el.onmousedown = (e) => { 
+                    if(gameOver) return;
+                    if(e.button === 0) isLeftDown = true;
+                    if(e.button === 2) isRightDown = true;
+                    
+                    if(isLeftDown && isRightDown) showNeighborPress(cell);
+                    else if(isLeftDown && firstMove) startClock();
+                };
+
+                cell.el.onmouseup = (e) => {
+                    if(gameOver) return;
+                    if(isLeftDown && isRightDown) {
+                        doQuickOpen(cell);
+                    } else if(e.button === 0 && isLeftDown && !isRightDown) {
+                        doReveal(cell.r, cell.c);
+                    } else if(e.button === 2 && isRightDown && !isLeftDown) {
+                        doToggleFlag(cell);
+                    }
+                    isLeftDown = false; isRightDown = false;
+                    clearNeighborPress();
+                };
+
+                cell.el.onmouseleave = () => { isLeftDown = false; isRightDown = false; clearNeighborPress(); };
+                
+                board.appendChild(cell.el);
+                row.push(cell);
+            }
+            grid.push(row);
+        }
+
+        // 佈雷與計算
+        let m = 0;
+        while(m < config.m) {
+            let rr = Math.floor(Math.random()*config.r), cc = Math.floor(Math.random()*config.c);
+            if(!grid[rr][cc].isMine) { grid[rr][cc].isMine = true; m++; }
+        }
+        grid.forEach((row, r) => row.forEach((cell, c) => {
+            if(!cell.isMine) {
+                let ct = 0;
+                for(let i=-1; i<=1; i++) for(let j=-1; j<=1; j++) if(grid[r+i]?.[c+j]?.isMine) ct++;
+                cell.count = ct;
+            }
+        }));
+
+        // 安全開局
+        const safe = grid.flat().filter(c => !c.isMine && c.count === 0);
+        const start = safe[Math.floor(Math.random()*safe.length)] || grid.flat().filter(c => !c.isMine)[0];
+        doReveal(start.r, start.c);
+        updateMineUI();
+    }
+
+    function showNeighborPress(cell) {
+        if(!cell.isRev) return;
+        clearNeighborPress();
+        for(let i=-1; i<=1; i++) for(let j=-1; j<=1; j++) {
+            const nb = grid[cell.r+i]?.[cell.c+j];
+            if(nb && !nb.isRev && !nb.isFlag) nb.el.classList.add('neighbor-press');
+        }
+    }
+
+    function clearNeighborPress() { document.querySelectorAll('.cell.neighbor-press').forEach(el => el.classList.remove('neighbor-press')); }
+
+    function doReveal(r, c) {
+        const cell = grid[r][c];
+        if (cell.isRev || cell.isFlag) return;
+        cell.isRev = true; cell.el.classList.add('revealed');
+        if (cell.isMine) { endGame(); return; }
+        if (cell.count > 0) {
+            cell.el.innerText = cell.count;
+            cell.el.classList.add(`n-${cell.count}`);
+        } else {
+            for(let i=-1; i<=1; i++) for(let j=-1; j<=1; j++) if(grid[r+i]?.[c+j]) doReveal(r+i, c+j);
+        }
+        checkVictory();
+    }
+
+    function doToggleFlag(cell) {
+        if (cell.isRev) return;
+        cell.isFlag = !cell.isFlag;
+        cell.el.innerText = cell.isFlag ? '🚩' : '';
+        cell.el.classList.toggle('flag', cell.isFlag);
+        minesLeft += cell.isFlag ? -1 : 1;
+        updateMineUI();
+    }
+
+    function doQuickOpen(cell) {
+        if(!cell.isRev || cell.count === 0) return;
+        let f = 0; let neighbors = [];
+        for(let i=-1; i<=1; i++) for(let j=-1; j<=1; j++) {
+            const nb = grid[cell.r+i]?.[cell.c+j];
+            if(nb) { if(nb.isFlag) f++; else if(!nb.isRev) neighbors.push(nb); }
+        }
+        if(f === cell.count) neighbors.forEach(nb => doReveal(nb.r, nb.c));
+    }
+
+    function startClock() {
+        firstMove = false;
+        timer = setInterval(() => { seconds++; document.getElementById('timer-val').innerText = `⏱️ ${String(seconds).padStart(3, '0')}`; }, 1000);
+    }
+
+    function updateMineUI() { document.getElementById('mine-cnt').innerText = `💣 ${String(Math.max(0, minesLeft)).padStart(3, '0')}`; }
+
+    function giveHint() {
+        if(gameOver || hintUsed) return;
+        const pool = grid.flat().filter(c => !c.isMine && !c.isRev && !c.isFlag);
+        if(pool.length > 0) {
+            const h = pool[Math.floor(Math.random()*pool.length)];
+            h.el.classList.add('hint-active');
+            hintUsed = true;
+            document.getElementById('hint-btn').innerText = `提示 (0)`;
+            document.getElementById('hint-btn').disabled = true;
+            setTimeout(() => h.el.classList.remove('hint-active'), 2000);
+        }
+    }
+
+    function endGame() {
+        gameOver = true; clearInterval(timer);
+        grid.flat().forEach(c => { if(c.isMine) { c.el.classList.add('mine'); c.el.innerText = '💣'; } });
+        setTimeout(() => alert('💥 任務失敗！'), 100);
+    }
+
+    function checkVictory() {
+        if(grid.flat().every(c => c.isMine ? !c.isRev : c.isRev)) {
+            gameOver = true; clearInterval(timer);
+            document.getElementById('congrats-text').innerText = winQuotes[Math.floor(Math.random()*winQuotes.length)];
+            document.getElementById('finish-time').innerText = `${seconds}s`;
+            document.getElementById('win-modal').classList.add('show');
+        }
+    }
+
+    window.onresize = updateCellSize;
+    initGame();
+</script>
+</body>
+</html>
